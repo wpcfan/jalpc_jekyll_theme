@@ -1,53 +1,67 @@
 - name:
-    detail: Nextcode
-    i18n: nextcode
+    detail: Soulkey Tech Co., Ltd.
+    i18n: soulkey
   desc:
-    detail: Now I am in Nextcode and develop website with Python code for genetic analysis.
-    i18n: nextcode_des
+    detail: I co-founded a startup - Soulkey Tech in May 2015, we are going to give choices to students, instead of leaving that to schools that have fixed pattern of teaching and fixed resources.  
+    i18n: soulkey_des
   date:
-    detail: Apr. 2016
-    i18n: nextcode_date
+    detail: At present
+    i18n: soulkey_date
   job:
-    detail: Python Developer
-    i18n: nextcode_job
-  icon: fa-plus-square
-
-- name:
-    detail: Netease Game
-    i18n: netease
-  desc:
-    detail: In Netease game, I learned game service system and use Python code for ops.
-    i18n: netease_des
-  date:
-    detail: Jun. 2015
-    i18n: nextcode_date
-  job:
-    detail: Dev Ops
-    i18n: netease_job
+    detail: Co-founder, CTO
+    i18n: soulkey_job
   icon: fa-gamepad
 
 - name:
-    detail: Ucloud
-    i18n: ucloud
+    detail: Neusoft
+    i18n: neusoft
   desc:
-    detail: In ucloud, I started to deal with servers and Linux system and use shell scripts to manage massive server.
-    i18n: ucloud_des
+    detail: In Neusoft, I started to manage development teams as Project Manager/Project Director/Dept. Manager. And I started to use multiple programing languages to build system on different platforms.
+    i18n: neusoft_des
   date:
     detail: Sep. 2013
-    i18n: ucloud_date
+    i18n: neusoft_date
   job:
-    detail: Dev Ops
-    i18n: ucloud_job
+    detail: Dept. Manager
+    i18n: neusoft_job
   icon: fa-cloud
 
 - name:
-    detail: Graduation
+    detail: Master Degree
+    i18n: msc
+  desc:
+    detail: At April 2004,I majored in Machine Learning and Data Mining in Unvi of Bristol.
+    i18n: msc_des
+  date:
+    detail: Apr. 2004
+    i18n: msc_date
+  job:
+    detail: Student
+    i18n: msc_job
+  icon: fa-book
+
+- name:
+    detail: Shanghai eBizServe Co. Ltd.
+    i18n: firstjob
+  desc:
+    detail: I got a Job as Java developer in Shanghai and did quite a lot of demos
+    i18n: firstjob_des
+  date:
+    detail: August. 2002
+    i18n: firstjob_date
+  job:
+    detail: Java Engineer
+    i18n: firstjob_job
+  icon: fa-database
+
+- name:
+    detail: Bachelor degree
     i18n: college
   desc:
-    detail: At July 2013,I graduated from college and started my IT technology tour.
+    detail: At July 2000,I graduated from Lanzhou Unvi.
     i18n: college_des
   date:
-    detail: Jul. 2013
+    detail: Jul. 2000
     i18n: college_date
   job:
     detail: Student

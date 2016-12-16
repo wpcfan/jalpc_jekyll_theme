@@ -1,0 +1,956 @@
+---
+layout: post
+title:  "Angular 2.x 从0到1（八）"
+desc: "Angular 2 教程最后一篇，RxJS的介绍和在Angular2 中的使用"
+keywords: "web, javascript, angular2,rxjs"
+date: 2016-12-14
+categories: [JavaScript]
+tags: [blog,javascript,angular2,rxjs]
+icon: icon-angular
+---
+
+* TOC
+{:toc}
+
+---
+
+# 番外：Rx--隐藏在Angular 2.x中利剑
+
+Rx（Reactive Extension -- 响应式扩展 http://reactivex.io ）最近在各个领域都非常火。其实Rx这个货是微软在好多年前针对C#写的一个开源类库，但好多年都不温不火，一直到Netflix针对Java平台做出了RxJava版本后才在开源社区热度飞速蹿升。
+
+这里还有个小故事，Netflix之所以做RxJava完全是一个偶然。个中缘由是由于Netflix的系统越做越复杂，大家都绞尽脑汁琢磨怎么才能从这些复杂逻辑的地狱中把系统拯救出来。一天，一个从微软跳槽过来的员工和主管说，我们原来在微软做的一个叫Rx的东东挺好的，可以非常简单的处理这些逻辑。主管理都没理，心想微软那套东西肯定又臃肿又不好用，从来没听说过微软有什么好的开源产品。但那位前微软的哥们锲而不舍，非常执着，不断和组内员工和主管游说，宣传这个Rx思想有多牛X。终于有一天，大家受不了了，说，这么着吧，给你个机会，你给大家仔细讲讲这个Rx，我们讨论看看到底适不适合。于是这哥们一顿喷，把大家都惊住了，微软竟然有这么好的东西。但是这东西是.Net的，怎么办呢，那就写一个吧（此处略去高山仰止的3000字）。
+
+八卦讲完，进入正题，那么什么叫响应式编程呢？这里引用一下Wikipedia的解释：
+
+> 英文原文：In computing, reactive programming is a programming paradigm oriented around data flows and the propagation of change. This means that it should be possible to express static or dynamic data flows with ease in the programming languages used, and that the underlying execution model will automatically propagate changes through the data flow.
+> 
+> 我的翻译：在计算领域，响应式编程一种面向数据流和变化传播的编程范式。这意味着可以在编程语言中很方便地表达静态或动态的数据流，而相关的计算模型会自动将变化的值通过数据流进行传播。
+
+这都说的什么啊？没关系，概念永远是抽象的，我们来举几个例子。比如说在传统的编程中 `a=b+c`，表示将表达式的结果赋给a，而之后改变b或c 的值不会影响a。但在响应式编程中，a的值会随着b或c的更新而更新。
+
+![传统编程中b,c的变化不会影响a][83]
+
+那么用响应式编程方法写出来就是这个样子，可以看到随着b和c的变化a也会随之变化。
+
+![响应式编程版本的a=b+c][84]
+
+看出来一些不一样的思维方式了吗？响应式编程需要描述数据流，而不是单个点的数据变量，我们需要把数据的每个变化汇聚成一个数据流。如果说传统编程方式是基于离散的点，那么响应式编程就是线。
+
+上面的代码虽然很短，但体现出Rx的一些特点
+
+1. Lamda表达式，对，就是那个看上去像箭头的东西 `=>` 。你可以把它想象成一个数据流的指向，我们从箭头左方取得数据流，在右方做一系列处理后或者输出成另一个数据流或者做一些其他对于数据的操作。
+2. 操作符：这个例子中的 `from`, `zip` 都是操作符。Rx中有太多的操作符，从大类上讲分为：创建类操作符、变换类操作符、过滤类操作符、合并类操作符、错误处理类操作符、工具类操作符、条件型操作符、数学和聚集类操作符、连接型操作符等等。
+
+## Rx再体验
+
+还是从例子开始，我们逐渐的来熟悉Rx。
+为了更直观的看到Rx的效果，推荐大家去JSBin这个在线Javascript IDE http://jsbin.com 去实验我们下面的练习。这个IDE非常方便，一共有5个功能窗口：HTML、CSS、Javascript、Console和Output
+
+![JSBin在线IDE][85]
+
+首先在HTML中引入Rx类库，然后定义一个id为todo的文本输入框：
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  <script src="https://unpkg.com/@reactivex/rxjs@5.0.0-beta.7/dist/global/Rx.umd.js"></script>
+</head>
+<body>
+<input id="todo" type="text"/>
+</body>
+</html>
+```
+
+在Javascript标签中选择 `ES6/Babel`，因为这样可以直接使用ES6的语法，在文本框中输入以下javascript。在RxJS领域一般在Observable类型的变量后面加上`$`标识这是一个“流变量”（由英文Stream得来，Observable就是一个Stream，所以用`$`标识），不是必须的，但是属于约定俗成。
+
+```javascript
+let todo = document.getElementById('todo');
+let input$ = Rx.Observable.fromEvent(todo, 'keyup');
+input$.subscribe(input => console.log(input.target.value));
+```
+
+如果Console窗口默认没有打开的话，请点击 `Console` 标签，然后选中右侧的 `Run with JS` 旁边的Auto-run js复选框。在Output窗口中应该可以看到一个文本输入框，在这个输入框中输入任意你要试验的字符，观察Console
+
+![Console和Output窗口][86]
+
+这几行代码很简单：首先我们得到HTML中id为todo的输入框对象，然后定义一个观察者对象将todo这个输入框的keyup事件转换成一个数据流，最后订阅这个数据流并在console中输出我们接收到的input事件的值。我们从这个例子中可以观察到几个现象：
+
+1. 数据流：你每次在输入框中输入时都会有新的数据被推送过来。本例中，你会发现连续输入“1，2，3，4”，在console的输出是“1，12，123，1234”，也就是说每次keyup事件我们都得到了完整的输入框中的值。而且这个数据流是无限的，只要我们不停止订阅，它就会一直在那里待命。
+2. 我们观察的是todo上发生的keyup这个事件，那如果我一直按着某个键不放会怎么样呢？你的猜测是对的，一直按着的时候，数据流没有更新，直到你抬起按键为止（你看到截图里面有2条一模一样的含有多个5的数据是因为我用的Surface Pro截图时的快捷键也被截获了，但由于是控制键所以文字内容没有改变）
+
+![一直按着5不放几秒之后的输出][87]
+
+如果观察的足够仔细的话，你会发现console中输出的值其实是 `input.target.value`，我们观察的对象其实是id为todo的这个对象上发生的keyup事件（`Rx.Observable.fromEvent(todo, 'keyup')`）。那么其实在订阅的代码段中的input其实是keyup事件才对。好，我们看看到底是什么，将 `console.log(input.target.value)` 改写成 `console.log(input)`，看看会怎样呢？是的，我们得到的确实是KeyboardEvent
+
+![事件被输出到Console][88]
+
+不太过瘾？那么我们再来做几个小练习，首先将代码改成下面的样子，其实不用我讲，你应该也可以猜得到，这是要过滤出 `keyCode=32` 的事件，keyCode是Ascii码，那么这就是要把空格滤出来
+
+```javascript
+let todo = document.getElementById('todo');
+let input$ = Rx.Observable.fromEvent(todo, 'keyup');
+input$
+  .filter(ev=>ev.keyCode===32)
+  .subscribe(ev=>console.log(ev.target.value));
+```
+
+结果我们看到了，按123456789都没有反应，直到按了空格
+
+![只在空格键抬起时触发的数据流][89]
+
+你可能一直在奇怪，我们最终只对输入框的值有兴趣，能不能数据流只传值过来呢？当然可以，使用map这个变换类操作符就可以完成这个转换了
+
+```javascript
+let todo = document.getElementById('todo');
+let input$ = Rx.Observable.fromEvent(todo, 'keyup');
+input$
+  .map(ev=>ev.target.value)
+  .subscribe(value=>console.log(value));
+```
+
+map这个操作符做的事情就是允许你对原数据流中的每一个元素应用一个函数，然后返回并形成一个新的数据流，这个数据流中的每一个元素都是原来的数据流中的元素应用函数后的值。比如下面的例子，对于原数据流中的每个数应用一个函数10*x，也就是扩大了10倍，形成一个新的数据流。
+
+![map变换操作符][90]
+
+## 常见操作
+
+最常见的两个操作符我们上面已经了解了，我们继续再来认识新的操作符。类似 `.map(ev=>ev.target.value)` 的场景太多了，以至于rxjs团队搞出来一个专门的操作符来应对，这个操作符就是 `pluck`。这个操作符专业从事从一系列嵌套的属性种把值提取出来形成新的流。比如上面的例子可以改写成下面的代码，效果是一样的。那么如果其中某个属性为空怎么办？这个操作符负责返回一个 `undefined` 作为值加入流中。
+
+```javascript
+let todo = document.getElementById('todo');
+let input$ = Rx.Observable.fromEvent(todo, 'keyup');
+input$
+  .pluck('target', 'value')
+  .subscribe(value=>console.log(value));
+```
+
+下面我们稍微给我们的页面加点料，除了输入框再加一个按钮
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  <script src="https://unpkg.com/@reactivex/rxjs@5.0.0-beta.7/dist/global/Rx.umd.js"></script>
+</head>
+<body>
+  <input id="todo" type="text"/>
+  <button id="addBtn">Add</button>
+</body>
+</html>
+```
+
+在Javascript中我们同样方法得到按钮的DOM对象以及声明对此按钮点击事件的观察者：
+
+```javascript
+let addBtn = document.getElementById('addBtn');
+let buttonClick$ = Rx.Observable
+                      .fromEvent(addBtn, 'click')
+                      .mapTo('clicked');
+```
+
+由于点击事件没有什么可见的值，所以我们利用一个操作符叫 `mapTo` 把对应的每次点击转换成字符 `clicked`。其实它也是一个 `map` 的简化操作。
+
+![mapTo操作符将每次点击转换成一个][91]
+
+### 合并类操作符
+
+#### combineLatest操作符
+
+既然现在我们已经有了两个流，应该试验一下合并类操作符了，先来试试 `combineLatest`，我们合并了按钮点击事件的数据流和文本框输入事件的数据流，并且返回一个对象，这个对象有两个属性，第一个是按钮事件数据流的值，第二个是文本输入事件数据流的值。也就是说应该是类似 `{ ev: 'clicked', input: '1'}` 这样的结构。
+
+```javascript
+Rx.Observable.combineLatest(buttonClick$, input$, (ev, input)=>{
+  return {
+    ev: ev,
+    input: input
+  }
+})
+  .subscribe(value => console.log(value))
+
+```
+
+那看看结果如何，在文本输入框输入1，没反应，再输入2，还是没反应
+
+![CombineLatest实验一：先输入文本][92]
+
+那我们点击一下按钮试试，这回有结果了，但有点没明白为什么是12，输入的数据流应该是： `1，12，...` 但那个1怎么丢了呢？
+
+![CombineLatest实验二：点击按钮][93]
+
+再来文本框输入3，4看看，这回倒是都出来了
+
+![CombineLatest实验二：再次输入][94]
+
+我们来解释一下combineLatest的机制就会明白了，如下图所示，上面的2条线是2个源数据流（我们分别叫它们源1和源2吧），经过combineLatest操作符后产生了最下面的数据流（我们称它为结果流）。
+
+当源1的数据流发射时，源2没有数据，这时候结果流也不会有数据产生，当源2发射第一个数据（图中A）后，combineLatest操作符做的处理是，把A和源1的最近产生的数据（图中2）组合在一起，形成结果流的第一个数据（图中2A）。当源2产生第二个数据（图中B）时，源1这时没有新的数据产生，那么还是用源1中最新的数据（图中2）和源2中最新的数据（图中B）组合。
+
+也就是说 `combineLatest` 操作符其实是在组合2个源数据流中选择最新的2个数据进行配对，如果其中一个源之前没有任何数据产生，那么结果流也不会产生数据。
+
+![CombineLatest操作符][95]
+
+讲到这里，有童鞋会问，原理是明白了，但什么样的实际需求会需要这个操作符呢？其实有很多，我这里只举一个小例子，现在健身这么热，比如说我们做一个简单的BMI计算器，BMI的计算公式是：体重（公斤）／（身高*身高）（米*米）。那么我们在页面给出两个输入框和一个用于显示结果的div：
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  <script src="https://unpkg.com/@reactivex/rxjs@5.0.0-beta.7/dist/global/Rx.umd.js"></script>
+</head>
+<body>
+  Weight: <input type="number" id="weight"> kg
+  <br/>
+  Height: <input type="number" id="height"> cm
+  <br/>
+  Your BMI is <div id="bmi"></div>
+</body>
+</html>
+```
+
+那么在JS中，我们想要达成的结果是只有两个输入框都有值的时候才能开始计算BMI，这时你发现combineLatest的逻辑不要太顺溜啊。
+
+```javascript
+let weight = document.getElementById('weight');
+let height = document.getElementById('height');
+let bmi = document.getElementById('bmi');
+
+let weight$ = Rx.Observable
+                .fromEvent(weight, 'input')
+                .pluck('target', 'value');
+
+let height$ = Rx.Observable
+                .fromEvent(height, 'input')
+                .pluck('target', 'value');
+
+let bmi$ = Rx.Observable
+              .combineLatest(weight$, height$, (w, h) => w/(h*h/100/100));
+
+bmi$.subscribe(b => bmi.innerHTML=b);
+```
+
+![简单的BMI计算器][96]
+
+#### zip操作符
+
+除了 `combineLatest` ，Rxjs还提供了多个合并类的操作符，我们再试验一个 `zip` 操作符。 `zip` 和 `combineLatest` 非常像，但重要的区别点在于 `zip` 严格的需要多个源数据流中的每一个的相同顺序的元素配对。
+
+比如说还是上面的例子，`zip` 要求源1的第一个数据和源2的第一个数据组成一对，产生结果流的第一个数据；源1的第二个数据和源2的第二个数据组成一对，产生结果流的第二个数据。而 `combineLatest` 不需要等待另一个源数据流产生数据，只要有一个产生，结果流就会产生。 
+
+![zip操作符有对齐的特性][97]
+
+`zip` 这个词在英文中有拉链的意思，记住这个有助于我们理解这个操作符，就像拉链一样，它需要拉链两边的齿一一对应。从效果角度上讲，这个操作符有减缓发射速度的作用，因为它会等待合并序列中最慢的那个。
+
+下面我们还是看个例子，在我写第七章的使用Bing Image API变换背景时，我最开始的想法是取得图片数组后，把这个数组中的元素每隔一段时间发送出去一个，这样组件端就不用关心图片变化的逻辑，只要服务发射一个地址，我就加载就行了。我就是用zip来实现的，我们在这个逻辑中有2个源数据流：基于一个数组生成的数据流以及一个时间间隔数据流。前者的发射速度非常快，后者则速度均匀，我们希望按后者的速度对齐前者，以达到每隔一段时间发射前者的数据的目的。
+
+```javascript
+   yieldByInterval(items, time) {
+     return Observable.from(items).zip(
+       Observable.interval(time),
+       (item, index) => item
+     );
+   }
+```
+
+为了更好的让大家体会，我改写一个纯javascript版本，可以在JSBin上面直接跑的，它的本质逻辑和上面讲的相同：
+
+```javascript
+let greetings = ['Hello', 'How are you', 'How are you doing'];
+let time = 3000;
+let item$ = Rx.Observable.from(greetings);
+let interval$ = Rx.Observable.interval(time);
+
+Rx.Observable.zip(
+    item$,
+    interval$,
+    (item, index) => {
+      return {
+        item: item,
+        index: index
+      }
+    }
+  )
+  .subscribe(result => 
+             console.log(
+              'item: ' + result.item + 
+              ' index: ' + result.index + 
+              ' at ' + new Date()));
+
+```
+
+我们看到结果如下图所示，每隔3000毫秒，数组中的欢迎文字被输出一次。
+
+![zip操作符示例][98]
+
+这两个操作符应该是Rx中最常用的2个合并类操作符了。其他的操作符大家可以去 http://reactivex.io/documentation/operators.html 查看，注意不是所有的操作符RxJS都有。而且RxJS 5.0 目前整体的趋势是减少不必要的以及冗余的操作符，所以我们只介绍最常用的一些操作符。
+
+### 创建类操作符
+
+通常来讲，Rx团队不鼓励新手自己从0开始创建Observable，因为状态太复杂，会遗漏一些问题。Rx鼓励的是通过已有的大量创建类转换操作符来去建立Observable。我们其实之前已经见过一些了，包括 `from` 和 `fromEvent`。
+
+#### from操作符
+
+`from` 可以支持从数组、类似数组的对象、Promise、iterable 对象或类似Observable的对象（其实这个主要指ES2015中的Observable）来创建一个Observable。
+
+这个操作符应该是可以创建Observable的操作符中最常使用的一个，因为它几乎可以把任何对象转换成Observable。
+
+```javascript
+var array = [10, 20, 30];
+var result$ = Rx.Observable.from(array);
+result$.subscribe(x => console.log(x));
+```
+
+![from转换一个数组为Observable][99]
+
+#### fromEvent操作符
+
+这个操作符是专门为事件转换成Observable而制作的，非常强大且方便。对于前端来说，这个方法用于处理各种DOM中的事件再方便不过了。
+
+```javascript
+var click$ = Rx.Observable.fromEvent(document, 'click');
+click$.subscribe(x => console.log(x));
+```
+
+![fromEvent转换事件为Observable][100]
+
+#### fromEventPattern
+
+我们经常会遇到一些已有的代码，这些代码和类库往往不受我们的控制，无法重构或代价太大。我们需要在这种情况下可以利用Rx的话，就需要大量的可以从原有的代码中可以转换的方法。addXXXHandler和removeXXXHandler就是大家以前经常使用的一种模式，那么在Rx中也提供了对应的方法可以转换，那就是
+
+```javascript
+function addClickHandler(handler) {
+  document.addEventListener('click', handler);
+}
+
+function removeClickHandler(handler) {
+  document.removeEventListener('click', handler);
+}
+
+var click$ = Rx.Observable.fromEventPattern(
+  addClickHandler,
+  removeClickHandler
+);
+click$.subscribe(x => console.log(x));
+```
+
+![fromEventPattern专门处理addHandler/removeHandler][101]
+
+#### defer操作符
+
+`defer` 是直到有订阅者之后才创建Observable，而且它为每个订阅者都会这样做，也就是说其实每个订阅者都是接收到自己的单独数据流序列。
+
+![defer操作符为每个订阅者单纯创建序列][102]
+
+```javascript
+Rx.Observable.defer(()=>{
+  let result = doHeavyJob();
+  return result?'success':'failed';
+})
+  .subscribe(x=>console.log(x))
+
+function doHeavyJob(){
+  setTimeout(function() {console.log('doing something');}, 2000);
+  return true;
+}
+```
+
+![defer惰性创建Observable][103]
+
+#### Interval
+
+Rx提供内建的可以创建和计时器相关的Observable方法，第一个是Interval，它可以在指定时间间隔发送整数的自增长序列。
+
+![Interval在指定时间间隔发送整数序列][104]
+
+例如下面代码，我们每隔500毫秒发送一个整数，这个数列是无穷的，我们取前三个好了：
+
+```javascript
+let source = Rx.Observable
+    .interval(500 /* ms */)
+    .take(3);
+
+let subscription = source.subscribe(
+    function (x) {
+        console.log('Next: ' + x);
+    },
+    function (err) {
+        console.log('Error: ' + err);
+    },
+    function () {
+        console.log('Completed');
+    });
+```
+
+那么输出是
+
+![Interval每隔500毫秒发送一个整数，取前三个的结果][105]
+
+这里大家可能注意到我们没有采用箭头的方式，而是用传统的写法，写了 `function(x){...}` ，哪种方式其实都可以，箭头方式会更简单。
+
+另一个需要注意的地方是，在subscribe方法中我们多了2个参数：一个处理异常，一个处理完成。Rx认为所有的数据流会有三个状态：next，error和completed。这三个函数就是分别处理这三种状态的，当然如果我们不写某个状态的处理，也就意味着我们认为此状态不需要特别处理。而且有些序列是没有completed状态的，因为是无限序列。本例中，如果我们去掉 `.take(3)` 那么completed是永远无法触发的。
+
+#### Timer
+
+下面我们来看看Timer，一共有2种形式的Timer，一种是指定时间后返回一个序列中只有一个元素（值为0）的Observable。
+
+```javascript
+//这里指定一开始的delay时间
+//也可以输入一个Date，比如“2016-12-31 20:00:00”
+//这样变成了在指定的时间触发
+let source = Rx.Observable.timer(2000);
+
+let subscription = source.subscribe(
+    x => console.log('Next: ' + x),
+    err => console.log('Error: ' + err),
+    () => console.log('Completed'));
+```
+
+![不指定间隔时间时，Timer只发射1个元素][106]
+
+第二种Timer很类似于Interval。除了第一个参数是一开始的延迟时间，第二个参数是间隔时间，也就是说，在一开始的延迟时间后，每隔一段时间就会返回一个整数序列。这个和Interval基本一样除了Timer可以指定什么时间开始（延迟时间）。
+
+```javascript
+var source = Rx.Observable.timer(2000, 100)
+    .take(3);
+    
+var subscription = source.subscribe(
+    x => console.log('Next: ' + x),
+    err => console.log('Error: ' + err),
+    () => console.log('Completed'));
+```
+
+![第二种Timer和Interval很类似][107]
+
+当然还有其他创建类的操作符，大家可以去 http://reactivex.io/documentation/operators 查阅自行试验一下。
+
+### 过滤类操作符
+
+之前我们见过好几个过滤类操作符：filter，distinct，take和debounce。
+
+#### filter
+
+Filter操作只允许数据流中满足其predicate测试的元素发射出去，这个predicate函数接受3个参数：
+
+1. 原始数据流元素
+2. 索引，这个是指该元素在源数据流中的位置（从0开始）
+3. 源Observable对象
+
+如下的代码将0-5中偶数过滤出来：
+
+```javascript
+let source = Rx.Observable.range(0, 5)
+  .filter(function (x, idx, obs) {
+    return x % 2 === 0;
+  });
+
+let subscription = source.subscribe(
+    x => console.log('Next: ' + x),
+    err => console.log('Error: ' + err),
+    () => console.log('Completed'));
+```
+
+![Filter是可以依据一个函数来过滤数据流][108]
+
+#### debounceTime
+
+对于一些发射频率比较高的数据流，我们有时会想给它安个“整流器”。比如在一个搜索框中，输入一些字符后希望出现一些搜索建议，这是个非常好的功能，很多时候可以减少用户的输入。
+
+但是由于这些搜索建议需要联网完成数据的传递，如果太频繁操作的话，对于用户的数据流量和服务器的性能承载都是有副作用的。所以我们一般希望在用户连续快速输入时不去搜索，而是等待有相对较长的间隔时再去搜索。
+
+下面的代码从输入上做了这样的一个“整流器”，滤掉了间隔时间小于400毫米的输入事件（输入本身不受影响），只有用户出现较明显的停顿时才把输入值发射出来。
+
+```javascript
+let todo = document.getElementById('todo');
+let input$ = Rx.Observable.fromEvent(todo, 'keyup');
+input$
+  .debounceTime(400)
+  .subscribe(input => console.log(input.target.value));
+```
+
+快速输入“12345”，在这种情况下得到的是一条数据
+
+![快速输入12345得到一条数据][109]
+
+但如果不应用debounceTime，我们得到5条记录
+
+![不应用debounceTime的结果][110]
+
+其他的过滤类操作符也很有趣，比如Distinct就是可以把重复的元素过滤掉，skip就可以跳过几个元素等等，可以自行研究，这里就不一一举例了。
+
+Rx的操作符实在太多了，我只能列举一些较常见的给大家介绍一下，其他的建议大家去官方文档学习。
+
+## Angular2中的内建支持
+
+Angular2中对于Rx的支持是怎么样的呢？先试验一下吧，简单粗暴的一个组件模版页面
+
+```html
+<p>
+  {{clock}}
+</p>
+```
+
+和在组件中定义一个简单粗暴的成员变量
+
+```javascript
+import { Component } from '@angular/core';
+
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/interval';
+
+@Component({
+  selector: 'app-playground',
+  templateUrl: './playground.component.html',
+  styleUrls: ['./playground.component.css']
+})
+export class PlaygroundComponent{
+  clock = Observable.interval(1000);
+
+  constructor() { }
+
+}
+
+```
+
+搞定！打开浏览器，显示了一个 `[object Object]`，晕倒。
+
+![直接把Observable对象显示在页面中的效果：啥也没有][111]
+
+当然经过前面的学习，我们知道Observable是个异步数据流，我们可以把代码改写一下，在订阅方法中去赋值就一切ok了。
+
+```javascript
+import { Component } from '@angular/core';
+
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/interval';
+
+@Component({
+  selector: 'app-playground',
+  templateUrl: './playground.component.html',
+  styleUrls: ['./playground.component.css']
+})
+export class PlaygroundComponent{
+  clock: number;
+
+  constructor() { 
+    Observable.interval(1000)
+      .subscribe(value => this.clock= value)
+  }
+
+}
+
+```
+
+![利用subscribe赋值成功显示的效果][112]
+
+但是这样做还是有一个问题，我们加入一个do操作符，在每次订阅前去记录就会发现一些问题。当我们离开页面再回来，每次进入都会创建一个新的订阅，，但原有的没有释放。
+
+```javascript
+Observable.interval(1000)
+      .do(_ => console.log('observable created'))
+      .subscribe(value => this.clock= value);
+```
+
+观察console中在‘observable created’之前的数字和页面显示的数字，大概是页面每增加1，console的数字增加2，这说明我们后面运行着2个订阅。
+
+![原有的订阅没有释放掉][113]
+
+原因是我们没有在页面销毁时取消订阅，那么我们利用生命周期的onDestroy来完成这一步：
+
+```javascript
+import { Component, OnDestroy } from '@angular/core';
+
+import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
+import 'rxjs/add/observable/interval';
+
+@Component({
+  selector: 'app-playground',
+  templateUrl: './playground.component.html',
+  styleUrls: ['./playground.component.css']
+})
+export class PlaygroundComponent implements OnDestroy{
+  clock: number;
+  subscription: Subscription;
+
+  constructor() { 
+    this.subscription = Observable.interval(1000)
+      .do(_ => console.log('observable created'))
+      .subscribe(value => this.clock= value);
+  }
+
+  ngOnDestroy(){
+    if(this.subscription !== undefined)
+      this.subscription.unsubscribe();
+  }
+}
+
+```
+
+现在再来观察，同样进入并离开再进入页面后，页面每增加1，console也会增加1。
+
+![通过onDestory中unsubscribe来防止内存泄露][114]
+
+### Async管道
+
+现在看起来还是挺麻烦的，有没有更简单的方法呢？答案当然是肯定的：Angular2提供一个管道叫：async，有了这个管道，我们无需管理琐碎的取消订阅，以及订阅了。
+
+让我们回到最开始的简单粗暴版本，模版文件稍微改写一下
+
+```html
+<p>
+  {{ clock | async }}
+</p>
+```
+
+这个 `| async` 是什么东东？async是Angular2提供的一种转换器，叫管道（Pipe）。
+
+每个应用开始的时候差不多都是一些简单任务：获取数据、转换它们，然后把它们显示给用户。一旦取到数据，我们可以把它们原始值的结果直接显示。 但这种做法很少能有好的用户体验。比如，几乎每个人都更喜欢简单的日期格式，几月几号星期几，而不是原始字符串格式 —— Fri Apr 15 1988 00:00:00 GMT-0700 (Pacific Daylight Time)。通过管道我们可以把不友好的值转换成友好的值显示在页面中。
+
+Angular内置了一些管道，比如DatePipe、UpperCasePipe、LowerCasePipe、CurrencyPipe和PercentPipe。它们全都可以直接用在任何模板中。Async管道也是内置管道之一。
+
+当然这样在页面写完管道后，我们的组件版本也回归了简单粗暴版本:
+
+```javascript
+import { Component, OnDestroy } from '@angular/core';
+
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/interval';
+
+@Component({
+  selector: 'app-playground',
+  templateUrl: './playground.component.html',
+  styleUrls: ['./playground.component.css']
+})
+export class PlaygroundComponent {
+  clock = Observable.interval(1000).do(_=>console.log('observable created'));
+
+  constructor() { }
+
+}
+
+```
+
+现在打开浏览器，看一下页面的效果
+
+![使用async pipe的版本][115]
+
+你做这个试验时很可能会遭遇一个错误，说async pipe无法找到
+
+![aync pipe无法找到的错误][116]
+
+这种情况一般是由于CommonModule没有导入造成的，遇到这种错误，请导入CommonModule。
+
+### Rx版本的Todo
+
+这一节我们通过改造我们的待办事项应用来进一步体会Rx的威力。首先我们把TodoService中原来采用的Promise方式都替换成Observable的方式。
+
+在进行改动之前，我们来重新分析一下逻辑：我们原有的实现方式中，组件中保留了一个todos数组的本地拷贝，服务器API逻辑在Service中完成。其实组件最好不关心逻辑，即使是本地拷贝的逻辑，也不应该放到组件中。组件本身的数据都是监听Service中的数据变化而得到的。
+
+那么我们应该在Service中建立本地的内存“数据库”，我们叫它 `dataStore` 吧。这个“数据库”中只有一个“表”：todos。
+
+```javascript
+//TodoService.ts
+  private dataStore: {  // todos的内存“数据库”
+    todos: Todo[]
+  };
+```
+
+为了让组件可以监听到这个数据的变化，我们需要一个Observable，但是在Service中我们还需要写入变化，这样的话，我们选择一个既是Observable又是Observer的对象，在Rx中，Subject就是这样的对象：
+
+```javascript
+//TodoService.ts
+...
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+@Injectable()
+export class TodoService {
+    ...
+    private _todos: BehaviorSubject<Todo[]>; 
+    constructor(private http: Http, @Inject('auth') private authService) {
+        this.dataStore = { todos: [] };
+        this._todos = new BehaviorSubject<Todo[]>([]);
+    }
+    ...
+  get todos(){
+    return this._todos.asObservable();
+  }
+  ...
+```
+
+我们使用了一个BehaviorSubject，它的一个特点是存储了发射的最新的值，这样无论什么订阅者订阅时都会得到“当前值”。我们之前通过ReplaySubject也实现过类似功能，但Replay是可以缓存多个值的。
+
+我们在构造中分别初始化了 `dataStore` 和 `_todos`，然后提供了一个get的属性方法让其他订阅者可以订阅todos的变化。在这个属性方法中，我们把Subject转成了Observable（通过`.asObservable()`）。
+
+那么我们如何写入变化呢？拿增加一个代办事项（ `addTodo(desc:string)` ）的逻辑来看一下吧。
+
+```javascript
+  addTodo(desc:string){
+    let todoToAdd = {
+      id: UUID.UUID(),
+      desc: desc,
+      completed: false,
+      userId: this.userId
+    };
+    this.http
+      .post(this.api_url, JSON.stringify(todoToAdd), {headers: this.headers})
+      .map(res => res.json() as Todo)
+      .subscribe(todo => {
+        this.dataStore.todos = [...this.dataStore.todos, todo];
+        this._todos.next(Object.assign({}, this.dataStore).todos);
+      });
+  }
+```
+
+由于 `this.http.post` 返回的本身就是Observable，所以我们不再需要 `.toPromise()` 这个方法了。直接用 `map` 将response的数据流转换成Todo的数据流，然后更新本地数据，然后使用Subject的 `next` 方法（`this._todos.next`）把本地数据写入数据流。这个next的含义就是让推送一个新元素到数据流。
+
+按照这种逻辑，我们把整个 `TodoService` 改造成下面的样子。
+
+```javascript
+import { Injectable, Inject } from '@angular/core';
+import { Http, Headers } from '@angular/http';
+import { UUID } from 'angular2-uuid';
+
+import { Observable } from 'rxjs/Observable';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+
+import { Todo } from '../domain/entities';
+
+@Injectable()
+export class TodoService {
+
+  private api_url = 'http://localhost:3000/todos';
+  private headers = new Headers({'Content-Type': 'application/json'});
+  private userId: string;
+  private _todos: BehaviorSubject<Todo[]>; 
+  private dataStore: {  // todos的内存“数据库”
+    todos: Todo[]
+  };
+
+  constructor(private http: Http, @Inject('auth') private authService) {
+    this.authService.getAuth()
+      .filter(auth => auth.user != null)
+      .subscribe(auth => this.userId = auth.user.id);
+    this.dataStore = { todos: [] };
+    this._todos = new BehaviorSubject<Todo[]>([]);
+  }
+
+  get todos(){
+    return this._todos.asObservable();
+  }
+
+  // POST /todos
+  addTodo(desc:string){
+    let todoToAdd = {
+      id: UUID.UUID(),
+      desc: desc,
+      completed: false,
+      userId: this.userId
+    };
+    this.http
+      .post(this.api_url, JSON.stringify(todoToAdd), {headers: this.headers})
+      .map(res => res.json() as Todo)
+      .subscribe(todo => {
+        this.dataStore.todos = [...this.dataStore.todos, todo];
+        this._todos.next(Object.assign({}, this.dataStore).todos);
+      });
+  }
+  // PATCH /todos/:id 
+  toggleTodo(todo: Todo) {
+    const url = `${this.api_url}/${todo.id}`;
+    const i = this.dataStore.todos.indexOf(todo);
+    let updatedTodo = Object.assign({}, todo, {completed: !todo.completed});
+    return this.http
+      .patch(url, JSON.stringify({completed: !todo.completed}), {headers: this.headers})
+      .subscribe(_ => {
+        this.dataStore.todos = [
+          ...this.dataStore.todos.slice(0,i),
+          updatedTodo,
+          ...this.dataStore.todos.slice(i+1)
+        ];
+        this._todos.next(Object.assign({}, this.dataStore).todos);
+      });
+  }
+  // DELETE /todos/:id
+  deleteTodo(todo: Todo){
+    const url = `${this.api_url}/${todo.id}`;
+    const i = this.dataStore.todos.indexOf(todo);
+    this.http
+      .delete(url, {headers: this.headers})
+      .subscribe(_ => {
+        this.dataStore.todos = [
+          ...this.dataStore.todos.slice(0,i),
+          ...this.dataStore.todos.slice(i+1)
+        ];
+        this._todos.next(Object.assign({}, this.dataStore).todos);
+      });
+  }
+  // GET /todos
+  getTodos(){
+    this.http.get(`${this.api_url}?userId=${this.userId}`)
+      .map(res => res.json() as Todo[])
+      .do(t => console.log(t))
+      .subscribe(todos => this.updateStoreAndSubject(todos));
+  }
+  // GET /todos?completed=true/false
+  filterTodos(filter: string) {
+    switch(filter){
+      case 'ACTIVE': 
+        this.http
+          .get(`${this.api_url}?completed=false&userId=${this.userId}`)
+          .map(res => res.json() as Todo[])
+          .subscribe(todos => this.updateStoreAndSubject(todos));
+          break;
+      case 'COMPLETED': 
+        this.http
+          .get(`${this.api_url}?completed=true&userId=${this.userId}`)
+          .map(res => res.json() as Todo[])
+          .subscribe(todos => this.updateStoreAndSubject(todos));
+          break;
+      default:
+        this.getTodos();
+    }
+  }
+  toggleAll(){
+    this.dataStore.todos.forEach(todo => this.toggleTodo(todo));
+  }
+  clearCompleted(){
+    this.dataStore.todos
+      .filter(todo => todo.completed)
+      .forEach(todo => this.deleteTodo(todo));
+  }
+  private updateStoreAndSubject(todos) {
+    this.dataStore.todos = [...todos];
+    this._todos.next(Object.assign({}, this.dataStore).todos);
+  }
+}
+
+```
+
+接下来我们看一下 `src/app/todo/todo.component.ts`，由于大部分逻辑已经在 `TodoService` 中实现了，我们可以删除客户端的逻辑代码：
+
+```javascript
+import { Component, OnInit, Inject } from '@angular/core';
+import { Router, ActivatedRoute, Params } from '@angular/router';
+import { TodoService } from './todo.service';
+import { Todo } from '../domain/entities';
+
+import { Observable } from 'rxjs/Observable';
+
+@Component({
+  templateUrl: './todo.component.html',
+  styleUrls: ['./todo.component.css']
+})
+export class TodoComponent implements OnInit {
+
+  todos : Observable<Todo[]>;
+
+  constructor(
+    @Inject('todoService') private service,
+    private route: ActivatedRoute,
+    private router: Router) {}
+
+  ngOnInit() {
+    this.route.params
+      .pluck('filter')
+      .subscribe(filter => {
+        this.service.filterTodos(filter);
+        this.todos = this.service.todos;
+      })
+  }
+  addTodo(desc: string) {
+    this.service.addTodo(desc);
+  }
+  toggleTodo(todo: Todo) {
+    this.service.toggleTodo(todo);
+  }
+  removeTodo(todo: Todo) {
+    this.service.deleteTodo(todo);
+  } 
+  toggleAll(){
+    this.service.toggleAll();
+  }
+  clearCompleted(){
+    this.service.clearCompleted();
+  }
+}
+
+```
+
+可以看到 `addTodo` 、 `toggleTodo` 、 `removeTodo` 、`toggleAll` 和 `clearCompleted` 基本上已经没有业务逻辑代码了，只是简单调用service的方法而已。
+
+还有一个比较明显的变化是，我们接收路由参数的方式也变成了Rx的方式，之前我们提过，像Angular2这种深度嵌合Rx的平台框架，几乎处处都有Rx的影子。
+
+当然，我们的组件中的todos变成了一个Observable，在构造时直接把Service的属性方法todos赋值上去了。这样改造后，我们只需改动模版的两行代码就大功告成了，那就是替换原有的`="todos..."`为 `= " todos | async"`。
+
+```html
+<div>
+  <app-todo-header
+    placeholder="What do you want"
+    (onEnterUp)="addTodo($event)" >
+  </app-todo-header>
+  <app-todo-list
+    [todos]="todos | async"
+    (onToggleAll)="toggleAll()"
+    (onRemoveTodo)="removeTodo($event)"
+    (onToggleTodo)="toggleTodo($event)"
+    >
+  </app-todo-list>
+  <app-todo-footer
+    [itemCount]="todos?.length | async"
+    (onClear)="clearCompleted()">
+  </app-todo-footer>
+</div>
+
+```
+
+启动浏览器看看吧，一切功能正常，代码更加简洁，逻辑更加清楚。
+
+![改造成的响应式Todo，所有功能一切正常][117]
+
+## 小结
+
+我们的Angular学习之旅从零开始到现在，完整的搭建了一个小应用。相信大家现在应该对Angular2有一个大概的认识了，而且也可以参与到正式的开发项目中去了。但Angular2作为一个完整框架，有很多细节我们是没有提到的，大家可以到官方文档 https://angular.cn/ 去查找和学习。
+
+  [83]: http://static.zybuluo.com/wpcfan/7paaruzx7t2qawk9jw8qzqb0/image_1b3evrm0rk1c1kb11mh9st6kao1g.png
+  [84]: http://static.zybuluo.com/wpcfan/0sy27j23jkyqw7gbazdf5v95/image_1b3f17o21b9o16f1dr21nur12nq2n.png
+  [85]: http://static.zybuluo.com/wpcfan/8md686e6awhplbn27wyktc1r/image_1b3fa3qmrrbj14hhl9af241555m.png
+  [86]: http://static.zybuluo.com/wpcfan/t6n4jjppb7i27s3gd3k0n54d/image_1b3faklqvbjc1p4sdhr1bhu9vt13.png
+  [87]: http://static.zybuluo.com/wpcfan/0t8qcbb4jxnyyhzkbe1ngerk/image_1b3fglc3vgonb9d1ieagt71sq59.png
+  [88]: http://static.zybuluo.com/wpcfan/wvzuefr1g1hflifipzzytc36/image_1b3fh5bgtrjmfk211hvg5i17bam.png
+  [89]: http://static.zybuluo.com/wpcfan/w5svpj9wxm00577z5h3vxgcx/image_1b3figmk91fjv60dnjdprkhei13.png
+  [90]: http://static.zybuluo.com/wpcfan/nbj0pecdxxtakak50agu41op/image_1b3fk3qo612471ai71egg1i1515s31g.png
+  [91]: http://static.zybuluo.com/wpcfan/0w4nt3vkxv0yainw0wabm1bx/image_1b3hjgl1gqaklnj1qr31572j2c2a.png
+  [92]: http://static.zybuluo.com/wpcfan/bv632opol178ghdqn79e1lee/image_1b3hk0fov1g2aeeb1310j0kjp52n.png
+  [93]: http://static.zybuluo.com/wpcfan/ybxd8dfsayq3oe0jurid9qqe/image_1b3hk3ori2jt1svl6km1csh70c34.png
+  [94]: http://static.zybuluo.com/wpcfan/frdxvg3isp0ma0ict95ozhgv/image_1b3hka3a1rkp1n7b14ul2dlu23h.png
+  [95]: http://static.zybuluo.com/wpcfan/wk4gwatqc3edd8zks0j40lyw/image_1b3hj4e748enu99jnd1m9aa1g1t.png
+  [96]: http://static.zybuluo.com/wpcfan/e3syscof2mrqovk8r28h4sq4/image_1b3i9947b1edq1ffa40i1vsmlj16.png
+  [97]: http://static.zybuluo.com/wpcfan/yzvihbjat2l8jbodprpsxifp/image_1b3j8dn9p1072ohjhqv1ful1cmp.png
+  [98]: http://static.zybuluo.com/wpcfan/kgggh41asqvfqp6flxnzxs6d/image_1b3n526sd1vgp12df13s7ihj2b1j.png
+  [99]: http://static.zybuluo.com/wpcfan/vr3mn0ltkpzqbxbzets82b0w/image_1b3n7jn3t16tp1jej14ve8qh1gfe20.png
+  [100]: http://static.zybuluo.com/wpcfan/hiqajty1tlq4xkr5enst340n/image_1b3n7sopd1fmceco10ud1is1ub2d.png
+  [101]: http://static.zybuluo.com/wpcfan/walv43zw68z0mzxl5qkeyubi/image_1b3n7vtqc1jat2861f8k1e8i1r1d2q.png
+  [102]: http://static.zybuluo.com/wpcfan/3p780opb45pm3obvgrsew2jr/image_1b3ogpb371mli7ccdii4ebdhc9.png
+  [103]: http://static.zybuluo.com/wpcfan/ftcnqjgl43l36teutf39x10k/image_1b3ocltsq16br1ec19d72mbbsl37.png
+  [104]: http://static.zybuluo.com/wpcfan/jpku44htoy1zjjiy7eu77dju/image_1b3oib0fgf4p1ns1u7j1cm2pi7m.png
+  [105]: http://static.zybuluo.com/wpcfan/oxkyh4fd6h05rduw1b2fatwu/image_1b3oj0vlmh2s1hlr1nslj908a31j.png
+  [106]: http://static.zybuluo.com/wpcfan/0hmmxq9lbrggivbovf7mb2ae/image_1b3okg3fkh6l1t9bsum1kukor42d.png
+  [107]: http://static.zybuluo.com/wpcfan/m0b23nq3nft68wp929gnnwwz/image_1b3ok3b1f1r0vlku1sq7k6413p620.png
+  [108]: http://static.zybuluo.com/wpcfan/tgoo0p0u6t4gbrxgo272o2na/image_1b3p0ng7lhbh1vdnq1a10up6f52q.png
+  [109]: http://static.zybuluo.com/wpcfan/yuueok3tniz06zj5lptidztr/image_1b3p6ldg019851kgn1fa7fls146q37.png
+  [110]: http://static.zybuluo.com/wpcfan/iv36fzqpjfsco3wy6wt2akwk/image_1b3p6ntv310o0rifqj91kv41htb3k.png
+  [111]: http://static.zybuluo.com/wpcfan/rtgm2jlj5duf76pa1xyqy71o/image_1b3ppc1i216qj1707phb1kr672t9.png
+  [112]: http://static.zybuluo.com/wpcfan/glham35rwcyatdtvshljwpcl/image_1b3prc8sc6u51pj61qrm1tk3hbvm.png
+  [113]: http://static.zybuluo.com/wpcfan/k10mmbl9co5o7l9tffwm11mi/image_1b3psun3cjcpkrg13rp1knh1trk2a.png
+  [114]: http://static.zybuluo.com/wpcfan/2u8j3y5ewuqu55smx2ek25gi/image_1b3psq94lc031b5111mhgqc1ltu1g.png
+  [115]: http://static.zybuluo.com/wpcfan/zw7jylvaagfo2a50jnwb2owf/image_1b3pug0tr18oeotp172p1pgqr4s2n.png
+  [116]: http://static.zybuluo.com/wpcfan/xhjkqdq5pazdds7iarrbwwc3/image_1b3pun648fsd1u2d5nu1nv21bf3h.png
+  [117]: http://static.zybuluo.com/wpcfan/zivgv8dk2uobpk36rc5nan6l/image_1b3rggpls1ah5tdb1hlm13804op3u.png

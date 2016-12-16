@@ -1,0 +1,549 @@
+---
+layout: post
+title:  "Angular 2.x 从0到1（七）"
+desc: "Angular 2 教程第七篇，动画框架、第三方对话框以及生命周期钩子"
+keywords: "web, javascript, angular2"
+date: 2016-12-07
+categories: [JavaScript]
+tags: [blog,javascript,angular2]
+icon: icon-angular
+---
+
+* TOC
+{:toc}
+
+---
+
+# 第七章：给组件带来活力
+
+这节我们的主题是“专注酷炫一百年”；-）其实...没那么夸张了，但我们还是要在这一节了解MDL css框架、Angular2 内建的动画特性、更复杂的组件和概括一下Angular2的组件生命周期。
+
+## 更炫的登陆页
+
+大家不知道有没有试用过bing（必应）搜索引擎（在Google无法访问的情况下，bing的英文搜索还是不错的选择），这个搜索引擎的主页很有特点：每日都会有一张非常好看的图作为背景。
+
+![bing搜索的首页有每日一图][67]
+
+我们想做的一个特效呢是类似地给登陆页增加一个背景，但更酷的一点是，我们的背景每隔3秒会自动替换一张。由于涉及到布局，我们先来熟悉一下CSS的框架设计。
+
+### 响应式的CSS框架
+
+目前主流的响应式css框架都有网格的概念，在我们现在使用的MDL（Material Design Lite）框架中叫做grid。在MDL中，一个页面在PC浏览器上的展现宽度有12个格子（cell），在平板上有8个格子，在手机上有4个格子。即一个grid的一行在PC上是12个cell，在平板上是8个cell，在手机上是4个cell。如果一行中的cell数目大于限制数目（比如在PC上超过12个），MDL会做折行处理。标识一个grid容器也很简单，在对应标签加上`class="mdl-grid"`即可。类似的每个cell需要在对应标签内加上`class="mdl-cell"`。如果要定制化grid的话，我们需要给class添加多个样式类名，比如如果希望grid内是没有间隔的，可以写成`class="mdl-grid mdl-grid--no-spacing"`；如果希望添加更多自己的定义，类似的可以写成`mdl-grid my-grid-style`，然后在css中定义这个`my-grid-style`即可。
+
+```html
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+  <div class="mdl-cell mdl-cell--1-col">1</div>
+</div>
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--4-col">4</div>
+  <div class="mdl-cell mdl-cell--4-col">4</div>
+  <div class="mdl-cell mdl-cell--4-col">4</div>
+</div>
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--6-col">6</div>
+  <div class="mdl-cell mdl-cell--4-col">4</div>
+  <div class="mdl-cell mdl-cell--2-col">2</div>
+</div>
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--6-col mdl-cell--8-col-tablet">6 (8 tablet)</div>
+  <div class="mdl-cell mdl-cell--4-col mdl-cell--6-col-tablet">4 (6 tablet)</div>
+  <div class="mdl-cell mdl-cell--2-col mdl-cell--4-col-phone">2 (4 phone)</div>
+</div>
+```
+
+![响应式布局在PC浏览器的展现][68]
+
+你可以尝试把浏览器的窗口缩小，让宽度变窄，调整到一定程度后你会发现，布局改变了，变成了下面的样子，这就是同样的代码在平板上的效果。你会发现原本的第一行折成了两行，因为在平板上8个cell是一行。你可以试试继续把浏览器的宽度变窄，看看在手机上的效果。
+
+![响应式布局在小窗口时的变化][69]
+
+下面我们看看怎么对Login页面做改造，首先在`form`外套一层`div`，并应用grid相关的css类，当然为了设置背景图，我们使用了一个angular属性ngStyle，这样让我们可以动态的改变背景图。grid里面我们仅有一个有实际内容的cell，就是form了，这个form在PC和平板上都占3个cell，在手机上占4个cell。但为了使这个form可以放在页面靠右的位置，我们添加了2个占位标签`mdl-layout-spacer`，标签的作用使将cell剩余的横向空间占满。
+
+```html
+<div
+  class="mdl-grid mdl-grid--no-spacing login-container"
+  [ngStyle]="{'background-image': 'url(' + photo + ')'}">
+  <mdl-layout-spacer
+    class="mdl-cell mdl-cell--8-col mdl-cell--4-col-tablet mdl-cell--hide-phone">
+  </mdl-layout-spacer>
+  <form
+    class="mdl-cell mdl-cell--3-col mdl-cell--3-col-tablet mdl-cell--4-col-phone login-form"
+    (ngSubmit)="onSubmit()"
+    >
+    <!--...(这里省略掉其他控件的内容)-->
+  </form>
+  <mdl-layout-spacer></mdl-layout-spacer>
+</div>
+```
+
+在我们还没有找到可以动态配置的图片源之前，为了看看页面效果，我们可以先找一张图片放在`src\assets`目录下面，然后在LoginComponent中将其赋值给photo: `photo = '/assets/login_default_bg.jpg';`。接下来就看看现在的页面效果吧。
+
+![在asset目录配置图片资源][70]
+
+### 寻找免费的图片源
+
+当然我们可以找到一些免费的图片，然后存到本地来实现这个功能，但如果有一个海量的图片库，我们可以根据关键字搜索不同的图片不是更酷了吗？幸运的是Bing搜索是有API的，去 https://www.microsoft.com/cognitive-services/en-us/bing-image-search-api 点击`Get Started for free`后点选`Bing Image Search`申请获得一个API key即可。
+
+![申请Bing Image API][71]
+
+申请完毕后可以在`My Account`中看到你的key，默认是隐藏的，点击`Show`链接即可看到了，点击Copy链接可以拷贝key到剪贴板。
+
+![查找API Key][72]
+
+Bing Image Search API的Request Url是:`https://api.cognitive.microsoft.com/bing/v5.0/images/search`，后面可以跟随一系列参数，其中q是必选参数，指明搜索的关键字。
+
+|参数|是否必选|类型|功能描述|
+|---|:---|:---:|---:|
+|q|是|string|搜索关键字|
+|count|否|number|返回的图片数量，实际返回值可能小于指定值|
+|offset|否|number|要跳过的结果数量|
+|mkt|否|string|从那个国家搜索，比如美国就是`en-US`|
+|safeSearch|否|string|应用过滤器过滤掉不良成人内容|
+
+知道了这些参数的意义后，我们可以在`login`目录下新建一个`BingImageService`：
+
+```javascript
+import { Injectable } from '@angular/core';
+import { Http, Headers, Response } from '@angular/http';
+import { Observable } from 'rxjs/Rx';
+import { Image } from '../domain/entities';
+
+@Injectable()
+export class BingImageService {
+
+  imageUrl: string;
+  headers = new Headers({
+    'Content-Type': 'application/json',
+    //把你获得API key在这里替换掉下面的enter-your-api-key-here
+    'Ocp-Apim-Subscription-Key': 'enter-your-api-key-here'
+  });
+
+  constructor(private http: Http) {
+    const q = '北极+墙纸';
+    const baseUrl: string = `https://api.cognitive.microsoft.com/bing/v5.0/images/search`;
+    this.imageUrl = baseUrl + `?q=${q}&count=5&mkt=zh-CN&imageType=Photo&size=Large`;
+  }
+
+  getImageUrl(): Observable<Image[]>{
+    return this.http.get(this.imageUrl, { headers: this.headers })
+            .map(res => res.json().value as Image[])
+            .catch(this.handleError);
+  }
+  private handleError(error: Response) {
+    console.error(error);
+    return Observable.throw(error.json().error || 'Server error');
+  }
+}
+```
+然后在LoginComponent中即可调用这个服务，在得到返回的图片结果后我们就可以去替换掉默认本地图片的地址了。由于我们是得到一个图片地址的数组，所以我们还需要一个对这个数组中的每张图片做一个4秒的等待。而且我们还做了一个小处理 `i = (i + 1) % length;`，使得图片可以循环播放。
+
+注意到我们让LoginComponent实现了`OnDestroy`接口，这是由于我们希望在页面销毁时也同时销毁观察者的订阅，而不是让它一直跑在后台。
+
+```javascript
+//代码片段
+export class LoginComponent implements OnDestroy {
+
+  username = '';
+  password = '';
+  auth: Auth;
+  slides: Image[] = [];
+  photo = '/assets/login_default_bg.jpg';
+  subscription: Subscription;
+
+  constructor(
+    @Inject('auth') private authService,
+    @Inject('bing') private bingService,
+    private router: Router) {
+    this.bingService.getImageUrl()
+      .subscribe((images: Image[]) => {
+        this.slides = [...images];
+        this.rotateImages(this.slides);
+      });
+  }
+  ...
+  ngOnDestroy(){
+    this.subscription.unsubscribe();
+  }
+  rotateImages(arr: Image[]){
+    const length = arr.length
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % length;
+      this.photo = this.slides[i].contentUrl;
+    }, 4000);
+  }
+}
+```
+
+来喝杯咖啡，欣赏一下我们的成果吧！
+
+![每隔4秒换一张背景图的登录页面][73]
+
+![等待4秒后背景切换了][74]
+
+## 自带动画技能的Angular2
+
+Angular2的目标是一站式解决方案，当然会自带动画技能。动画会被定义在`@Component`描述性元数据中。在添加动画之前，先引入一些与动画有关的类库：
+```javascript
+import {
+  Component,
+  Inject,
+  trigger,
+  state,
+  style,
+  transition,
+  animate,
+  OnDestroy
+} from '@angular/core';
+```
+然后就可以在`@Component`元数据中去添加动画相关的元数据了，我们这里定义了一个叫`loginState`的动画触发器（trigger）。这个触发器会在`inactive`和`active`两个状态间转换。`scale(1.1)`是放缩比例，意味着我们对控件做了1.1倍的放大。这个动画的逻辑就是，当触发器处于`active`状态时，对应用这个触发器状态的控件做1.1倍放大处理。
+
+```javascript
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css'],
+  animations: [
+    trigger('loginState', [
+      state('inactive', style({
+        transform: 'scale(1)'
+      })),
+      state('active',   style({
+        transform: 'scale(1.1)'
+      })),
+      transition('inactive => active', animate('100ms ease-in')),
+      transition('active => inactive', animate('100ms ease-out'))
+    ])
+  ]
+})
+```
+
+我们刚刚定义了一个动画，但它还没有被用到任何地方。要想使用它，可以在模板中用`[@triggerName]="xxx"`的形式来把它附加到一个或多个元素上。
+
+```html
+      <button
+        mdl-button mdl-button-type="raised"
+        mdl-colored="primary"
+        mdl-ripple type="submit"
+        [@loginState]="loginBtnState"
+        (mouseenter)="toggleLoginState(true)"
+        (mouseleave)="toggleLoginState(false)">
+        Login
+      </button>
+```
+
+这里我们对Login这个按钮应用了`loginState`触发器，并且绑定这个触发器的状态值到一个成员变量`loginBtnState`。而且我们定义了在鼠标进入按钮区域和离开按钮区域时应该通过一个函数`toggleLoginState`来改变`loginBtnState`的值。在`LoginComponent`中定义这个方法即可，我们要实现的这个功能非常简单，一行代码就搞定了：
+
+```javascript
+  toggleLoginState(state: boolean){
+    this.loginBtnState = state ? 'active' : 'inactive';
+  }
+```
+试着将鼠标放在按钮上和离开按钮区域，看看按钮的变化的效果。
+
+![鼠标离开和进入按钮区域时不同的按钮大小][75]
+
+## 完成遗失已久的注册功能
+
+我们自从完成了基本的多用户待办事项后就没有增加注册功能，现在来填补这个缺憾吧。我们打算在点击登录页的Register按钮时弹出一个注册用户的对话框。
+
+![我们要实现的注册对话框效果][76]
+
+如果实现一个对话框，利用我们已经引入的`angular2-mdl`库，需要几个步骤：
+
+我们需要在`src\index.html`中增加一个“对话框插座”（`<dialog-outlet></dialog-outlet>`），就是在`<app-root>`下面添加即可。
+
+```html
+<!doctype html>
+<html>
+<head>
+...
+</head>
+<body>
+  <app-root>Loading...</app-root>
+  <dialog-outlet></dialog-outlet>
+</body>
+</html>
+```
+
+建立dialog页面：`angular2-mdl`中有很多方便内建对话框和声明式方式，但我们这里介绍一种定制化程度比较高，也略显复杂的方式。打开一个命令行终端，输入 `ng g c login/register-dialog`。
+
+对话框的模板比较简单，由一个用户名输入框、一个密码输入框、一个重复密码输入框、一个加载状态和一个注册按钮组成。其中我们希望按钮在表单验证正确后才可用，而且在处理注册过程中，按钮应该不可用。在处理注册过程中，应该有一个用户提示。
+
+```html
+<form [formGroup]="form">
+  <h3 class="mdl-dialog__title">Register</h3>
+  <div class="mdl-dialog__content">
+    <mdl-textfield
+      #firstElement
+      type="text"
+      label="Username"
+      formControlName="username"
+      floating-label>
+    </mdl-textfield>
+    <br/>
+    <mdl-textfield
+      type="password"
+      label="Password"
+      formControlName="password"
+      floating-label>
+    </mdl-textfield>
+    <br/>
+    <mdl-textfield
+      type="password"
+      label="Repeat Password"
+      formControlName="repeatPassword"
+      floating-label>
+    </mdl-textfield>
+  </div>
+  <div class="status-bar">
+    <p class="mdl-color-text--primary">{{statusMessage}}</p>
+    <mdl-spinner [active]="processingRegister"></mdl-spinner>
+  </div>
+  <div class="mdl-dialog__actions">
+    <button
+      type="button"
+      mdl-button
+      (click)="register()"
+      [disabled]="!form.valid || processingRegister"
+      mdl-button-type="raised"
+      mdl-colored="primary" mdl-ripple>
+      Register
+    </button>
+  </div>
+</form>
+```
+
+那么对应的组件文件中，我们这次没有使用双向绑定，而是完全采取表单的方式进行。这里介绍几个新面孔：
+
+ - FormBuilder：这个其实是一个工具类，用于快速构造一个表单。
+ - FormGroup：顾名思义是一组表单控件，一个表单可以有多个FormGroup，这个常常在比较复杂的表单中使用，用于更好的分类和控制。如果这一组中的任何一个控件验证失败，这个FormGroup的验证状态也是失败的。
+ - FormControl：跟踪表单控件的值和验证状态。
+
+Angular2 的FormControl中内置了常用的验证器（Validator），我们在这个例子中除此之外还给出了一个自定义的验证器 `passwordMatchValidator`，用于判断是否两次密码输入的是相同的。
+
+此外呢我们还用到了一个新修饰符 `@HostListener` ，这个修饰符是指我们要监听宿主（这里是浏览器）的某些动作和变化。比如本例中，我们想要用户在按Esc键时关闭对话框，但这个动作并不局限在某个控件上，只要用户点击了Esc我们就关闭对话框，这时我们就得监听宿主的 `keydown.esc` 事件了。
+
+```javascript
+//省略掉Import代码段和修饰符代码段
+...
+export class RegisterDialogComponent{
+  @ViewChild('firstElement') private inputElement: MdlTextFieldComponent;
+  public form: FormGroup;
+  public processingRegister = false;
+  public statusMessage = '';
+  private subscription: Subscription;
+
+  constructor(
+    private dialog: MdlDialogReference,
+    private fb: FormBuilder,
+    private router: Router,
+    @Inject('auth') private authService) {
+      this.form = fb.group({
+        'username':  new FormControl('',  Validators.required),
+        'passwords': fb.group({
+          'password': new FormControl('', Validators.required),
+          'repeatPassword': new FormControl('', Validators.required)
+        },{validator: this.passwordMatchValidator})
+      });
+      // just if you want to be informed if the dialog is hidden
+      this.dialog.onHide().subscribe( (auth) => {
+        console.log('login dialog hidden');
+        if (auth) {
+          console.log('authenticated user', auth);
+        }
+      });
+      this.dialog.onVisible().subscribe( () => {
+        this.inputElement.setFocus();
+      });
+  }
+
+  passwordMatchValidator(group: FormGroup){
+    this.statusMessage = '';
+    let password = group.get('password').value;
+    let confirm = group.get('repeatPassword').value;
+
+    // Don't kick in until user touches both fields
+    if (password.pristine || confirm.pristine) {
+      return null;
+    }
+    if(password===confirm) {
+      return null;
+    }
+    return {'mismatch': true};
+  }
+
+  public register() {
+    this.processingRegister = true;
+    this.statusMessage = 'processing your registration ...';
+
+    this.subscription = this.authService
+      .register(
+        this.form.get('username').value,
+        this.form.get('passwords').get('password').value)
+      .subscribe( auth => {
+        this.processingRegister = false;
+        this.statusMessage = 'you are registered and will be signed in ...';
+        setTimeout( () => {
+          this.dialog.hide(auth);
+          this.router.navigate(['todo']);
+        }, 500);
+    }, err => {
+      this.processingRegister = false;
+      this.statusMessage = err.message;
+    });
+  }
+
+  @HostListener('keydown.esc')
+  public onEsc(): void {
+    if(this.subscription !== undefined)
+      this.subscription.unsubscribe();
+    this.dialog.hide();
+  }
+}
+```
+
+这样做完后，打开浏览器却发现报错了，这是由于我们未引入 `ReactiveFormsModule` 造成的， `FormGroup` 是由 `ReactiveFormsModule` 提供的，因此要在 `src\app\login\login.module.ts` 中引入这个模块。
+
+![未引入ReactiveForms引起的报错][77]
+
+### Restful API的实验
+
+现在还需要完成服务器端的API。和以前类似的，我们需要先实验一下json-server的API，确定各参数可行的条件下再进行编码。由于现在我们需要进行GET以外的操作，所以如果有专业工具来辅助会比较方便，这里推荐一个Chrome App：Postman，可以自行科学上网后在Chrome商店搜索安装。安装后点左上角的应用即可看到Postman了
+
+![Chrome应用：Postman][78]
+
+点击Postman，输入`http://localhost:3000/users`可以看到返回的json数据了
+
+![PostMan的功能区介绍][79]
+
+我们来试验一下新增一个用户，但这个时候我们已经给User的id定义成数字类型了，实在不想改成UUID了，怎么办呢？幸运的是json-server其实是很聪明的，如果在POST时你不给它传入id字段，它会认为这个id是自增长的。在Postman中将HTTP方法设成POST，在Headers中写上 `Content-Type` 和 `application/json`。然后在Body中选择 `raw` ，并写入
+
+```javascript
+{
+	"username": "testUser",
+	"password": "testPassword"
+}
+```
+
+点击Send后可以看到，新的id自动被写入了，这简直太方便了，也符合一般后端开发的套路。
+
+![用Postman测试自增长ID][80]
+
+知道这点后，我们着手写对应方法就很简单了，首先在 `UserService` 中添加addUser方法。
+
+```javascript
+  addUser(user: User): Observable<User>{
+    return this.http.post(this.api_url, JSON.stringify(user), {headers: this.headers})
+            .map(res => res.json() as User)
+            .catch(this.handleError);
+  }
+```
+
+在AuthService中添加一个register方法，正如我们刚刚实验的那样，我们只需构造一个没有id的User对象即可。当然我们要检查一下用户名是否存在，如果不存在的话才可以注册新用户。这里又碰到一个新的Rx方法 `switchMap`，是用来对原来流中的对象做变换后，发射变换后的流。用一个图示来表示我们下面代码的逻辑是这样的
+
+```
+                                  null               null
+                                   /                 /
+应用filter前：User=====User=====User=====...=====User======...
+应用filter后：==================User=====...=====User======...
+(把user===null的滤出来)          |                |
+应用switchMap后：              Auth======...======Auth=====... 
+
+```
+
+```javascript
+  register(username: string, password: string): Observable<Auth> {
+    let toAddUser = {
+      username: username,
+      password: password
+    };
+    return this.userService
+            .findUser(username)
+            .filter(user => user === null)
+            .switchMap(user => {
+              return this.userService.addUser(toAddUser).map(u => {
+                this.auth = Object.assign(
+                  {},
+                  { user: u, hasError: false, errMsg: null, redirectUrl: null}
+                );
+                this.subject.next(this.auth);
+                return this.auth;
+              });
+            });
+  }
+```
+
+打开浏览器，检查所有功能是否完整可用，正常情况下点Register你可以看到下面的界面，试着注册一个新用户，开始管理你的待办事项吧。
+
+![完成注册功能的页面][81]
+
+## Angular 2的组件生命周期
+
+![angular 2 的组件生命周期函数][82]
+
+每个组件都有一个被Angular管理的生命周期：Angular创建、渲染控件；创建、渲染子控件；当数据绑定属性改变时做检查；在把控件移除DOM之前销毁控件等等。
+
+Angular提供生命周期的“钩子”（Hook）以便于开发者可以得到这些关键过程的数据以及在这些过程中做出响应的能力。
+
+指令也有类似的生命周期“钩子”函数，除了一些组件特有的函数外。
+
+下面这段代码展现了如何利用 `ngOnInit` 这个钩子函数
+
+```javascript
+export class PeekABoo implements OnInit {
+  constructor(private logger: LoggerService) { }
+
+  // implement OnInit's `ngOnInit` method
+  ngOnInit() { this.logIt(`OnInit`); }
+
+  logIt(msg: string) {
+    this.logger.log(`#${nextId++} ${msg}`);
+  }
+}
+```
+
+钩子函数的接口 （比如上面例子中的 `OnInit` ） 从纯技术的角度来说不是必须的，这是由于Javascript本身没有接口这个概念，而Typescript最终是转换成Javascript的。
+
+Angular其实是通过检查指令或组件的类中是否定义了相关方法来进行的，比如上面例子中即使不实现 `OnInit` 接口，只要定义了 `ngOnInit()` 方法，Angular就会在对应的生命周期调用这个方法。但是还是推荐大家使用接口，因为强类型会给我们带来其他好处。
+
+|函数|应用范围|目的和触发时机|
+|---|---|---|
+|ngOnChanges|组件和指令|在ngInit之前触发，当Angular设置数据绑定属性或输入性属性时会得到一个包含当前和之前属性值的对象（SimpleChanges）|
+|ngOnInit|组件和指令|只调用一次，在设置完输入性属性后，通过这个函数初始化组件或指令|
+|ngDoCheck|组件和指令|在ngInit之后，每次检测到变化时触发，可以在此检查一些angular自身无法检查的变化|
+|ngAfterContentInit|组件|在ngDoCheck后触发，只调用一次，把要装载到组件视图的内容初始化后|
+|ngAfterContentChecked|组件|ngAfterContentInit之后每次ngDoCheck都会在之后触发ngAfterContentChecked，对要装载到组件视图的内容进行检查后|
+|ngAfterViewInit|组件|在第一个ngAfterContentInit被调用后触发，只调用一次，在angular初始化视图后响应|
+|ngAfterViewChecked|组件|在ngAfterViewInit后及每个ngAfterContentChecked后触发 |
+|ngOnDestroy|组件和指令|在组件或指令被销毁前，清理环境，可以在此处取消Observable的订阅|
+
+本节代码：https://github.com/wpcfan/awesome-tutorials/tree/chap07/angular2/ng2-tut
+
+  [67]: http://static.zybuluo.com/wpcfan/rpvxg5kcdy1gs6pka50wieda/image_1b36ghm4o179516kdikkbc14qp9.png
+  [68]: http://static.zybuluo.com/wpcfan/fwq8nslpo6j6g4dwv534xhfy/image_1b36l1ajl1qqm1t091m89gbe1cr7m.png
+  [69]: http://static.zybuluo.com/wpcfan/d749paatwa3if5lagm9sbg86/image_1b36lq1ikh3vnfkadg8rpnrm13.png
+  [70]: http://static.zybuluo.com/wpcfan/du7mdyjtiszhuusvo8acicp4/image_1b37me9ik1eba1ruq98s1n041siq9.png
+  [71]: http://static.zybuluo.com/wpcfan/r4fnf9io4dky0a3gp9oso82i/image_1b36ncud0epmjsjsrjqds1tka9.png
+  [72]: http://static.zybuluo.com/wpcfan/tv2fvnqqv12o1nnobd0ip64l/image_1b36npfqlhkq0l1fge1o8jon0m.png
+  [73]: http://static.zybuluo.com/wpcfan/a1gsg1mcsyd4r96bypd55nvd/image_1b38vhduajb5bng1o3a1f73ua79.png
+  [74]: http://static.zybuluo.com/wpcfan/z3ok1yhh8lsuxg1aub49qifr/image_1b3912qu9bbduuokqe12031853m.png
+  [75]: http://static.zybuluo.com/wpcfan/0pbxveqx8yjt9xyb23m941te/image_1b396i9rc1jg9hbsgj5e44sns13.png
+  [76]: http://static.zybuluo.com/wpcfan/yfppqsaemxgviktatn6l3jyh/image_1b39tfmnni8hsnnila1c5cj701g.png
+  [77]: http://static.zybuluo.com/wpcfan/4zesdanc1zzz9pv5684i6agp/image_1b3c404ni7qe1vv69uu6ubvhh9.png
+  [78]: http://static.zybuluo.com/wpcfan/cj4w92jxeoox33sn82xbjf4g/image_1b39uniimjrnv31kr7ajvei1t.png
+  [79]: http://static.zybuluo.com/wpcfan/6m32j6pmfzyx4uv52mhnjrl0/image_1b39v6ibl4peqcgmhckc4ka2a.png
+  [80]: http://static.zybuluo.com/wpcfan/qwga78sqyohp5syyemdjsva5/image_1b3a2in1k145g15rej8icr51i4p2n.png
+  [81]: http://static.zybuluo.com/wpcfan/sarm4ukcxyd8wrnqssdy6xr2/image_1b3c5t3g11edk83n1c1olrci739.png
+  [82]: http://static.zybuluo.com/wpcfan/jqvbexkvo0ubcu8ozhq7sjd5/image_1b3c6vnk21sj13831cec16n0gsnm.png

@@ -1,6 +1,6 @@
 {
   "website":{
-    "title": "Jack's blog"
+    "title": "Peng's blog"
   },
   "nav":{
     "home": "Home",
@@ -13,7 +13,7 @@
   },
   "about_me":{
     "about_me": "About Me",
-    "des": "I am a Full Stack engineer with website development, automation Ops and writing scripts experience. Life is a continuous learning process, so work makes me more rigorous, travel makes my life more colorful. I can make lots of friends when I coding and travel."
+    "des": "I am an early adopter for Chinese internet, one of long-time silence of majority, a full-stack aged engineer and a fan of cool electronic stuff."
   },
   "skills":{
     "my_skills": "My Skills"
@@ -27,21 +27,25 @@
   },
   "career":{
     "my_career": "My Career",
-    "nextcode": "Nextcode",
-    "nextcode_des": "Now I am in Nextcode and develop website with Python code for genetic analysis.",
-    "nextcode_date": "Apr. 2016",
-    "nextcode_job": "Python Developer",
-    "netease": "Netease Game",
-    "netease_des": "In Netease game, I learned game service system and use Python code for ops.",
-    "netease_date": "Jun. 2015",
-    "netease_job": "Dev Ops",
-    "ucloud": "Ucloud",
-    "ucloud_des": "In ucloud, I started to deal with servers and Linux system and use shell scripts to manage massive server.",
-    "ucloud_date": "Sep. 2013",
-    "ucloud_job": "Dev Ops",
+    "soulkey": "Soulkey Tech Co., Ltd.",
+    "soulkey_des": "I co-founded a startup - Soulkey Tech in May 2015, we are going to give choices to students, instead of leaving that to schools that have fixed pattern of teaching and fixed resources.",
+    "soulkey_date": "At present",
+    "soulkey_job": "Co-founder, CTO",
+    "neusoft": "Neusoft",
+    "neusoft_des": "In Neusoft, where I spent 12 years there,  I started to manage development teams as Project Manager/Project Director/Dept. Manager. And I started to use multiple programing languages to build system on different platforms.",
+    "neusoft_date": "May. 2015",
+    "neusoft_job": "Dept. Manager",
+    "msc": "Master Degree",
+    "msc_des": "April 2004，I got my MSc degree in Univ of Bristol after spending 2 years studying Machine Learning and Data Mining in there",
+    "msc_date": "Apr. 2004",
+    "msc_job": "Studuent",
+    "firstjob": "Shanghai eBizServe Co. Ltd.",
+    "firstjob_des": "I got a Job as Java developer in Shanghai and did quite a lot of demos",
+    "firstjob_date": "Aug. 2002",
+    "firstjob_job": "Java Engineer",
     "college": "Graduation",
-    "college_des": "At July 2013,I graduated from college and started my IT technology tour.",
-    "college_date": "Jul. 2013",
+    "college_des": "At July 2000,I graduated from Lanzhou Unvi.",
+    "college_date": "Jul. 2000",
     "college_job": "Student"
   },
   "blog":{

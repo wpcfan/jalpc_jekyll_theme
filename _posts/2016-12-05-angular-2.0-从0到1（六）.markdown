@@ -1,0 +1,533 @@
+---
+layout: post
+title:  "Angular 2.x 从0到1（六）"
+desc: "Angular 2 教程第六篇，如何部署到生产环境？如何使用第三方控件？"
+keywords: "web, javascript, angular2"
+date: 2016-12-05
+categories: [JavaScript]
+tags: [blog,javascript,angular2]
+icon: icon-angular
+---
+
+* TOC
+{:toc}
+
+---
+
+# 第六章：使用第三方样式库及模块优化
+
+## 生产环境初体验
+
+用angular-cli建立生产环境是非常简单的，只需输入`ng build --prod --aot`即可。--prod会使用生产环境的配置文件，--aot会使用AOT替代JIT进行编译。现在实验一下
+
+![执行生产环境编译][54]
+
+仔细看一下命令行输出，我们应该可以猜到angular移除了一些没有用到的类库（Google称之为Shaking过程），对js和css等进行了压缩等优化工作。angular在我们的项目根目录下建立了一个`dist`文件夹，用于生产环境的文件就输出在这个文件夹了。
+
+![生产环境输出的文件][55]
+
+我们安装一个http-server，`npm i -g http-server`，然后在dist目录键入`http-server .`。打开浏览器进入`http://localhost:8080`，我们会看到网页打开了。但如果打开console，或者试着登录一下，你会发现存在很多错误。
+
+![由于未配置Hash造成的错误][56]
+
+这是由于angular-cli当前的bug产生的，目前需要对路由做hash处理。
+
+```javascript
+...
+@NgModule({
+  imports: [
+    RouterModule.forRoot(routes, { useHash: true })
+  ],
+  exports: [
+    RouterModule
+  ]
+})
+...
+```
+
+只需在`app-routing.module.ts`中为RouterModule配置`{ useHash: true }`的属性即可。这样的话angular会在url上加上一个`#`，比如login的url现在是`http://localhost:8080/#/login`。这样改动后，功能又好用了。以后我们项目如果需要发布到生产环境的，大家利用angular-cli可以很方便的处理了。然后下面我们回到开发环境，请关掉8080端口的http服务器，并删掉dist。
+
+## 第三方样式库
+
+之前我们使用的是自己为各个组件写样式，其实angular团队有一套官方的符合Material Design的内建组件库：[https://github.com/angular/material2][57]（这个库还属于早期阶段，很多控件不可用，所以大家可以关注，但现阶段不建议在生产环境中使用）。
+
+除了官方之外，目前有大量的比较成熟的样式库，比如bootstrap，material-design-lite等。我们这节课以material-design-lite来看一下怎么使用。[Material Desing Lite][58]是Google为web开发的一套基于Material Design的样式库。由于是Google开发的，所以你要去访问之前要科学上网。
+
+我们当然可以直接使用官方的css样式库，但是有好心人已经帮我们封装成了比较好用的[组件模块][59]了，组件模块的好处是可以使模板写起来更简洁，而且易于扩展。现在打开一个terminal输入`npm install --save angular2-mdl`。然后在你需要使用MDL组件的模块中引入MdlModule。我们首先希望改造一下我们的AppComponent，目前它只有一句简陋的文字输出。
+
+```html
+<mdl-layout mdl-layout-fixed-header mdl-layout-header-seamed>
+  <mdl-layout-header>
+    <mdl-layout-header-row>
+      <mdl-layout-title>Awesome Todos</mdl-layout-title>
+      <mdl-layout-spacer></mdl-layout-spacer>
+      <!-- Navigation. We hide it in small screens. -->
+      <nav class="mdl-navigation">
+        <a class="mdl-navigation__link">Logout</a>
+      </nav>
+    </mdl-layout-header-row>
+  </mdl-layout-header>
+  <mdl-layout-drawer>
+    <mdl-layout-title>Title</mdl-layout-title>
+    <nav class="mdl-navigation">
+      <a class="mdl-navigation__link">Link</a>
+    </nav>
+  </mdl-layout-drawer>
+  <mdl-layout-content class="content">
+    <router-outlet></router-outlet>
+  </mdl-layout-content>
+</mdl-layout>
+```
+
+这段代码里面mdl开头的标签都是我们刚引入的组件库封装的组件，具体的用法可以去 http://mseemann.io/angular2-mdl/ 和 https://getmdl.io  参考文档资料。
+
+`<mdl-layout></mdl-layout>`是一个布局组件，`mdl-layout-fixed-header`是一个可以让header固定在页面顶部的属性，`mdl-layout-header-seamed`是要header没有阴影。`mdl-layout-header`是一个顶部组件，`mdl-layout-header-row`是在顶部组件中形成一行的容器。`mdl-layout-spacer`是一个占位的组件，它会把组件剩余位置占满，防止出现错位。`mdl-layout-drawer`是一个抽屉组件，和Android的标准应用类似，点击顶部菜单图标会从侧面滑出一个菜单。别忘了在AppModule中引入
+
+```javascript
+...
+import { MdlModule } from 'angular2-mdl';
+...
+@NgModule({
+  ...
+  imports: [
+    ...
+    MdlModule,
+    ...
+  ],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+我们为了使用，还需要对颜色做个定制，这个定制需要使用一种CSS的预编译技术叫[SASS][60]，需要建立一个`src\styles.scss`，然后定义Material Design的颜色，具体颜色名字的定义是在Google调色板类中定义的，可以去  [http://mseemann.io/angular2-mdl/theme][61] 查看。
+
+```css
+@import "~angular2-mdl/scss/color-definitions";
+
+$color-primary: $palette-blue-500;
+$color-primary-dark: $palette-blue-700;
+$color-accent: $palette-amber-A200;
+$color-primary-contrast: $color-dark-contrast;
+$color-accent-contrast: $color-dark-contrast;
+
+@import '~angular2-mdl/scss/material-design-lite';
+```
+
+![Material Design 调色板][62]
+
+Material Design中区分主色（Primary）和配色（Accent），比如像图中的颜色搭配，主色是blue，在scss中我们可以让 `$color-primary: $palette-blue-500;`，`500` 是指的颜色深度，如果想更深一些就指定成600，900等，可以自己实验一下。类似的配色pink，就可以让 `$color-accent: $palette-pink-300;`。那么 `$color-primary-dark` 是什么意思呢，顾名思义是更深的主色的意思，Material Design的主要设计目标也是以色彩和动画的变化来给用户不同的体验，所以主色尽量不要过深，因为还有更深的主色需要定义。
+
+由于我们使用的CLI并不知道我们采用了预编译的css，所以需要改一下`angular-cli.json`，把styles改写成下面的样子
+
+```javascript
+"styles": [
+        "styles.scss"
+      ],
+```
+
+保存后打开浏览器看一下效果：
+
+![image_1b2g0jju71mdsnd3k2v174k7129.png-11.5kB][63]
+
+我们接下来改造一下login的模板
+
+```html
+<div>
+  <form (ngSubmit)="onSubmit()">
+    <mdl-textfield
+      type="text"
+      label="Username..."
+      name="username"
+      floating-label
+      required
+      [(ngModel)]="username"
+      #usernameRef="ngModel"
+      >
+    </mdl-textfield>
+    <div *ngIf="auth?.hasError" >
+      {{auth?.errMsg}}
+    </div>
+    <mdl-textfield
+      type="password"
+      label="Password..."
+      name="password"
+      floating-label
+      required
+      [(ngModel)]="password"
+      #passwordRef="ngModel">
+    </mdl-textfield>
+    <button 
+      mdl-button mdl-button-type="raised" 
+      mdl-colored="primary" 
+      mdl-ripple type="submit">
+      Login
+    </button>
+  </form>
+</div>
+```
+
+由于采用了符合Material Design的组件，我们就不需要原来的用于验证的`div`了。
+
+![采用Material Design风格的表单控件][64]
+
+下面看一下Todo，原来我们在css中用了svg来改写复选框的样子，现在我们试试用mdl来做。在`todo-list.component.html`中把ToggleAll改写成下面的样子
+
+```html
+<mdl-icon-toggle class="toggle-all" [mdl-ripple]="true" (click)="onToggleAllTriggered()">expand_more</mdl-icon-toggle>
+```
+
+这个标签是把一个图标做成可复选框的效果，这里用到了Google的icon font，所以需要在`index.html`中引入
+
+```html
+<!doctype html>
+<html>
+<head>
+  ...
+  <link rel="stylesheet" href="https://fonts.lug.ustc.edu.cn/icon?family=Material+Icons">
+</head>
+<body>
+  <app-root>Loading...</app-root>
+</body>
+</html>
+```
+
+我们用了科大的镜像，因为Google的产品，你懂的。
+当然TodoItem模板中的checkbox也需要改造成
+
+```html
+<mdl-icon-toggle (click)="toggle()" [(ngModel)]="isChecked">check_circle</mdl-icon-toggle>
+```
+Todo变成下面的样子，也还不错啊~~
+
+![清爽的TodoList][65]
+
+## 模块优化
+
+现在仔细看一下我们的各个模块定义，发现我们不断地重复引入了`CommonModule`、`FormsModule`、`MdlModule`，这些如果在大部分的组件中都会用到话，我们不妨建立一个SharedModule （`src\app\shared\shared.module.ts`）
+
+```javascript
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MdlModule } from 'angular2-mdl';
+
+@NgModule({
+  imports: [
+    CommonModule,
+    FormsModule,
+    MdlModule
+  ],
+  exports: [
+    CommonModule,
+    FormsModule,
+    MdlModule
+  ]
+})
+export class SharedModule { }
+```
+
+这个模块的作用是把常用的组件和模块打包起来（虽然现在没有组件，只是把常用的模块导入又导出），这样在其他模块中只需引入这个模块即可，比如TodoModule现在看起来是下面的样子：
+
+```javascript
+...
+import { SharedModule } from '../shared/shared.module';
+...
+@NgModule({
+  imports: [
+    SharedModule,
+    ...
+  ],
+  declarations: [
+    TodoComponent,
+    ...
+  ],
+  providers: [
+    {provide: 'todoService', useClass: TodoService}
+    ],
+})
+export class TodoModule {}
+```
+
+### 关于模块的最佳实践
+
+Angular团队对于共享特性模块有如下建议
+
+ - 坚持在shared目录中创建名叫SharedModule的特性模块（例如在app/shared/shared.module.ts中定义SharedModule）。
+ - 坚持把可能被应用其它特性模块使用的公共组件、指令和管道放在SharedModule中，这些资产倾向于共享自己的新实例（而不是单例）。
+ - 坚持在SharedModule中导入所有模块都需要的资产（例如CommonModule和FormsModule）。
+ - 坚持在SharedModule中声明所有组件、指令和管道。
+ - 坚持从SharedModule中导出其它特性模块所需的全部符号。
+ - **避免**在SharedModule中指定应用级的单例服务提供商。但如果是故意设计的单例也可以，不过还是要小心。
+
+很显然，我们的共享模块还没有全部做到，大家可以作为练习自己试验一下。
+
+同样的对于核心特性模块，官方的建议是
+
+- 坚持把那些“只用一次”的类收集到CoreModule中，并对外隐藏它们的实现细节。简化的AppModule会导入CoreModule，并且把它作为整个应用的总指挥。
+- 坚持在core目录下创建一个名叫CoreModule的特性模块（例如在app/core/core.module.ts中定义CoreModule）。
+- 坚持把一个要共享给整个应用的单例服务放进CoreModule中（例如ExceptionService和LoggerService）。
+- 坚持导入CoreModule中的资产所需要的全部模块（例如CommonModule和FormsModule）。
+- 坚持把应用级、只用一次的组件收集到CoreModule中。 只在应用启动时从AppModule中导入它一次，以后再也不要导入它（例如NavComponent和SpinnerComponent等）。
+- 坚持从CoreModule中导出AppModule需导入的所有符号，使它们在所有特性模块中可用。
+- 坚持防范多次导入CoreModule，并通过添加守卫逻辑来尽快失败。
+- **避免**在AppModule之外的任何地方导入CoreModule
+ 
+## 多个不同组件间的通信
+
+下面我们要实现这样一个功能：在用户未登录时，顶部菜单中只有Login一个链接可见，用户登录后，顶部菜单中有三个链接，一个是Todo，一个是用户个人信息，另一个是Logout。按这个需求将顶部菜单改造成如下：
+
+```html
+<!--src\app\app.component.html-->
+<mdl-layout mdl-layout-fixed-header mdl-layout-header-seamed>
+  <mdl-layout-header>
+    <mdl-layout-header-row>
+      <mdl-layout-title>{{title}}</mdl-layout-title>
+      <mdl-layout-spacer></mdl-layout-spacer>
+      <!-- Navigation. We hide it in small screens. -->
+      <nav class="mdl-navigation" *ngIf="auth?.user?.username !== null">
+        <a class="mdl-navigation__link" routerLink="todo">Todos</a>
+      </nav>
+      <nav class="mdl-navigation" *ngIf="auth?.user?.username !== null">
+        <a class="mdl-navigation__link" routerLink="profile">{{auth.user.username}}</a>
+      </nav>
+      <nav class="mdl-navigation">
+        <a class="mdl-navigation__link" *ngIf="auth?.user?.username === null" (click)="login()">
+          Login
+        </a>
+        <a class="mdl-navigation__link" *ngIf="auth?.user?.username !== null" (click)="logout()">
+          Logout
+        </a>
+      </nav>
+    </mdl-layout-header-row>
+  </mdl-layout-header>
+  <mdl-layout-drawer>
+    <mdl-layout-title>{{title}}</mdl-layout-title>
+    <nav class="mdl-navigation">
+      <a class="mdl-navigation__link">Link</a>
+    </nav>
+  </mdl-layout-drawer>
+  <mdl-layout-content class="content">
+    <router-outlet></router-outlet>
+  </mdl-layout-content>
+</mdl-layout>
+```
+
+这样改造完后的页面结构是顶部菜单只加载一次，底下的内容随着不同路由显示不同内容。但如果我们要在login后顶部菜单也随之改变的话，我们一定要实现某种通信机制。前面我们讲过EventEmiiter，当然我们可以将整个页面当成父控件，顶部菜单是子控件的形式，但这时你发现由于我们是用路由插座（`<router-outlet></router-outlet>`） l来显示内容的，所以无法采用子控件的形式传递信息。
+
+这种情况就要引入Rx了，rx的学习门槛较高，也不是本教程的重点，但我还是这里尝试着解释一下。Rx是响应式编程的利器，它的学习门槛来自于思维方式的转变，从传统的编程思维转成流式思维：Rx总体来看是一个数据流或信号流，所有的操作符都是为了对这个流进行控制。写Rx时要对系统数据或信号的完整逻辑流程先想清楚，然后就比较好写了。
+
+其实在Angular2中，Rx是无处不在的，还记得我们之前总用到toPromise()这个方法吗？其实这个方法是给不太熟悉Rx的同学用的，Angular本身返回的就是Observable。我们现在把UserService改成Rx版本
+
+```javascript
+import { Injectable } from '@angular/core';
+
+import { Http, Headers, Response } from '@angular/http';
+import { Observable } from 'rxjs/Rx';
+import 'rxjs/add/operator/map';
+
+import { User } from '../domain/entities';
+
+@Injectable()
+export class UserService {
+
+  private api_url = 'http://localhost:3000/users';
+
+  constructor(private http: Http) { }
+
+  getUser(userId: number): Observable<User> {
+    const url = `${this.api_url}/${userId}`;
+    return this.http.get(url)
+              .map(res => res.json() as User);
+  }
+  findUser(username: string): Observable<User> {
+    const url = `${this.api_url}/?username=${username}`;
+    return this.http.get(url)
+              .map(res => {
+                let users = res.json() as User[];
+                return (users.length>0) ? users[0] : null;
+              });
+  }
+}
+```
+
+大家可能注意到了，其实有没有Promise都无所谓，大概的写法也是类似的，只不过返回的是Observable。这里改了之后，相关调用的地方都要改一下，比如LoginComponent：
+
+```javascript
+import { Component, Inject } from '@angular/core';
+import { Router, ActivatedRoute, Params } from '@angular/router';
+import { Auth } from '../domain/entities';
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+
+  username = '';
+  password = '';
+  auth: Auth;
+  constructor(@Inject('auth') private service, private router: Router) { }
+
+  onSubmit(){
+    this.service
+      .loginWithCredentials(this.username, this.password)
+      .subscribe(auth => {
+        this.auth = Object.assign({}, auth);
+        if(!auth.hasError){
+          this.router.navigate(['todo']);
+        }
+      });
+  }
+}
+```
+
+AuthService也需要改写成下面的样子。这里注意到我们引入了一个新概念：Subject。Subject 既是Observer（观察者）也是Observable（被观察对象）。这里采用Subject的原因是我们在Login时改变了Auth的属性，但由于这个Login方法是Login页面显性调用的，其他需要观察Auth变化的地方调用的是getAuth()方法。这样的话，我们需要在Auth发生变化时推送变化出去，我们在loginWithCredentials方法中以`this.subject.next(this.auth);`写入其变化，在getAuth()中用`return this.subject.asObservable();`将Subject转换成Observable。
+
+```javascript
+import { Injectable, Inject } from '@angular/core';
+import { Http, Headers, Response } from '@angular/http';
+
+import { ReplaySubject, Observable } from 'rxjs/Rx';
+import 'rxjs/add/operator/map';
+import { Auth } from '../domain/entities';
+
+@Injectable()
+export class AuthService {
+  auth: Auth = {hasError: true, redirectUrl: '', errMsg: 'not logged in'};
+  subject: ReplaySubject<Auth> = new ReplaySubject<Auth>(1);
+  constructor(private http: Http, @Inject('user') private userService) {
+  }
+  getAuth(): Observable<Auth> {
+    return this.subject.asObservable();
+  }
+  unAuth(): void {
+    this.auth = Object.assign(
+      {},
+      this.auth,
+      {user: null, hasError: true, redirectUrl: '', errMsg: 'not logged in'});
+    this.subject.next(this.auth);
+  }
+  loginWithCredentials(username: string, password: string): Observable<Auth> {
+    return this.userService
+      .findUser(username)
+      .map(user => {
+        let auth = new Auth();
+        if (null === user){
+          auth.user = null;
+          auth.hasError = true;
+          auth.errMsg = 'user not found';
+        } else if (password === user.password) {
+          auth.user = user;
+          auth.hasError = false;
+          auth.errMsg = null;
+        } else {
+          auth.user = null;
+          auth.hasError = true;
+          auth.errMsg = 'password not match';
+        }
+        this.auth = Object.assign({}, auth);
+        this.subject.next(this.auth);
+        return this.auth;
+      });
+  }
+}
+```
+
+但为什么是ReplaySubject呢？我们共有2处需要监听Auth的变化：一处是导航栏，导航栏会依据不同的Auth值来显示/隐藏不同菜单；另一处是todo的路由守卫，它会依据Auth是否有错误来判断是否允许进入该路由url。我们来以时间维度分析一下流程：我们在执行登录时，如果鉴权成功，会导航到某个路由（这里是todo），这时会引发CanActivate的检查，而此时最新的Auth已经发射完毕（因为我们在loginWithCredentials中写入了变化值），CanActivate检查时会发现没有Auth数据。
+
+```
+getAuth() Auth:{}  Auth{user: {id: 1...}} getAuth()-没有Auth数据发射了
+|==========|==============|===========================|=====
+导航栏    登录前          登录后              todo路由守卫激活
+```
+
+这种情况下我们需要缓存最近的一份Auth数据，无论谁，什么时间订阅，只要没有更新的数据，我们就推送最近的一份给它，这就是ReplaySubject的意义所在。
+
+下面我们改写路由守卫
+
+```javascript
+import { Injectable, Inject } from '@angular/core';
+import {
+  CanActivate,
+  CanLoad,
+  Router,
+  Route,
+  ActivatedRouteSnapshot,
+  RouterStateSnapshot }    from '@angular/router';
+import { Observable } from 'rxjs/Rx';
+import 'rxjs/add/operator/map';
+
+@Injectable()
+export class AuthGuardService implements CanActivate, CanLoad {
+
+  constructor(
+    private router: Router,
+    @Inject('auth') private authService) { }
+
+  canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
+    let url: string = state.url;
+
+    return this.authService.getAuth()
+      .map(auth => !auth.hasError);
+  }
+  canLoad(route: Route): Observable<boolean> {
+    let url = `/${route.path}`;
+
+    return this.authService.getAuth()
+      .map(auth => !auth.hasError);
+  }
+}
+```
+
+这里你会发现多了一个canLoad方法，canActivate是用于是否可以进入某个url，而canLoad是决定是否加载某个url对应的模块。所以需要再改下路由
+
+```javascript
+import { NgModule }     from '@angular/core';
+import { Routes, RouterModule } from '@angular/router';
+import { LoginComponent } from './login/login.component';
+import { AuthGuardService } from './core/auth-guard.service';
+
+const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'login',
+    pathMatch: 'full'
+  },
+  {
+    path: 'todo',
+    redirectTo: 'todo/ALL',
+    canLoad: [AuthGuardService]
+  }
+];
+
+@NgModule({
+  imports: [
+    RouterModule.forRoot(routes, { useHash: true })
+  ],
+  exports: [
+    RouterModule
+  ]
+})
+export class AppRoutingModule {}
+```
+现在打开浏览器欣赏一下我们的成果。
+
+![改造后的首页登录后效果图][66]
+
+本节代码：https://github.com/wpcfan/awesome-tutorials/tree/chap06/angular2/ng2-tut
+
+
+
+  [54]: http://static.zybuluo.com/wpcfan/enoypw8hkt4rs5qpwby7fey3/image_1b2m0102o1d721c438jr18r9f889.png
+  [55]: http://static.zybuluo.com/wpcfan/km6fx7cleicpzpuqn681my0m/image_1b2m07bdvqk91aaodsd16pd2kuv.png
+  [56]: http://static.zybuluo.com/wpcfan/df0pajt5bei3pbw0b854a2n1/image_1b2m0l4teqja2f016s61g5o14261c.png
+  [57]: https://github.com/angular/material2 "Material 2"
+  [58]: https://getmdl.io
+  [59]: https://github.com/mseemann/angular2-mdl
+  [60]: http://sass-lang.com/
+  [61]: http://mseemann.io/angular2-mdl/theme
+  [62]: http://static.zybuluo.com/wpcfan/8hpn0dypdubf83zftj7rcqoz/image_1b3eq6qhv1kfo14ug1osh1nb5h3e9.png
+  [63]: http://static.zybuluo.com/wpcfan/d01y1qp5ke1mvm56b4s7db7m/image_1b2g0jju71mdsnd3k2v174k7129.png
+  [64]: http://static.zybuluo.com/wpcfan/c8s2lzrgia8kc0iouy3gcuwu/image_1b2g1csop1684jfghpphffui9m.png
+  [65]: http://static.zybuluo.com/wpcfan/tu60u4nrupshfjhmz8xnvr8o/image_1b2g1e0261mkmtp61kjm6f94g513.png
+  [66]: http://static.zybuluo.com/wpcfan/nks5h5wn6cf3mcjmxem301mm/image_1b2o9tso51ald1u0e1nr59gi119i9.png
